@@ -670,6 +670,15 @@ pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
 extern "C" {
+    pub type LLJIT;
+}
+unsafe impl Sync for LLJIT {}
+
+extern "C" {
+    pub type JITDylib;
+}
+
+extern "C" {
     pub type DiagnosticHandler;
 }
 
@@ -2491,4 +2500,16 @@ extern "C" {
         callback: GetSymbolsCallback,
         error_callback: GetSymbolsErrorCallback,
     ) -> *mut c_void;
+
+    pub fn LLVMRustCreateLLJIT() -> &'static mut LLJIT;
+    pub fn LLVMRustLLJITLoadDynamicLibrary(J: &LLJIT, FileName: *const c_char);
+    pub fn LLVMRustLLJITAddIRModule(J: &LLJIT, M: &Module);
+    pub fn LLVMRustLLJITLookup(J: &LLJIT, Name: *const c_char) -> u64;
+    pub fn LLVMRustSetLinkageForAllFunctions(M: &Module);
+    pub fn LLVMRustAddGlobalCtor(C: &Context, M: &Module, V: &Value);
+    pub fn LLVMRustRunCtors(J: &LLJIT);
+
+    pub fn LLVMDumpModule(M: &Module);
+
+    pub fn LLVMSearchForAddressOfSymbol(SymbolName: *const c_char) -> *mut c_void;
 }

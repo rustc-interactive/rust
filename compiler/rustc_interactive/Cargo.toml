@@ -1,0 +1,12 @@
+[package]
+name = "rustc_interactive"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+rustc_codegen_llvm = { path = "../rustc_codegen_llvm" }
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_llvm = { path = "../rustc_llvm" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_span = { path = "../rustc_span" }

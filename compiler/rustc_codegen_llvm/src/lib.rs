@@ -59,11 +59,11 @@ mod allocator;
 mod asm;
 mod attributes;
 mod base;
-mod builder;
+pub mod builder;
 mod callee;
 mod common;
 mod consts;
-mod context;
+pub mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
@@ -396,7 +396,7 @@ unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
 impl ModuleLlvm {
-    fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
@@ -433,7 +433,7 @@ impl ModuleLlvm {
         }
     }
 
-    fn llmod(&self) -> &llvm::Module {
+    pub fn llmod(&self) -> &llvm::Module {
         unsafe { &*self.llmod_raw }
     }
 }

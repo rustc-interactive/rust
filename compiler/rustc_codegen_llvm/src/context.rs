@@ -342,7 +342,7 @@ pub unsafe fn create_module<'ll>(
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    pub(crate) fn new(
+    pub fn new(
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,

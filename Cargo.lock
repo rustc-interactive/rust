@@ -4155,6 +4155,7 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
+ "rustc_interactive",
  "rustc_smir",
 ]
 
@@ -4805,6 +4806,18 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "tracing",
+]
+
+[[package]]
+name = "rustc_interactive"
+version = "0.0.0"
+dependencies = [
+ "rustc_codegen_llvm",
+ "rustc_codegen_ssa",
+ "rustc_hir",
+ "rustc_llvm",
+ "rustc_middle",
+ "rustc_span",
 ]
 
 [[package]]

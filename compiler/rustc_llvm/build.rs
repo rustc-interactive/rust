@@ -24,8 +24,18 @@ const OPTIONAL_COMPONENTS: &[&str] = &[
     "bpf",
 ];
 
-const REQUIRED_COMPONENTS: &[&str] =
-    &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "coverage", "instrumentation"];
+const REQUIRED_COMPONENTS: &[&str] = &[
+    "ipo",
+    "bitreader",
+    "bitwriter",
+    "linker",
+    "asmparser",
+    "lto",
+    "coverage",
+    "instrumentation",
+    "executionengine",
+    "orcjit",
+];
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but

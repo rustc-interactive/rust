@@ -11,6 +11,8 @@
 #if LLVM_VERSION_GE(16, 0)
 #include "llvm/Support/ModRef.h"
 #endif
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
@@ -33,6 +35,7 @@
 using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
+using namespace llvm::orc;
 
 // LLVMAtomicOrdering is already an enum - don't create another
 // one.
@@ -1995,4 +1998,89 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
 
 extern "C" bool LLVMRustIsBitcode(char *ptr, size_t len) {
   return identify_magic(StringRef(ptr, len)) == file_magic::bitcode;
+}
+
+extern "C" LLJIT *LLVMRustCreateLLJIT() {
+  Expected<std::unique_ptr<LLJIT>> J = LLJITBuilder().create();
+  if (!J)
+    report_fatal_error(toString(J.takeError()).c_str());
+
+  return J->release();
+}
+
+extern "C" void LLVMRustLLJITLoadDynamicLibrary(LLJIT *J,
+                                                const char *FileName) {
+  auto Generator = DynamicLibrarySearchGenerator::Load(
+      FileName, J->getDataLayout().getGlobalPrefix());
+  if (!Generator)
+    report_fatal_error(toString(Generator.takeError()).c_str());
+
+  J->getMainJITDylib().addGenerator(std::move(*Generator));
+}
+
+extern "C" void LLVMRustLLJITAddIRModule(LLJIT *J, LLVMModuleRef ModuleRef) {
+  auto M = std::unique_ptr<Module>(unwrap(ModuleRef));
+  auto C = std::make_unique<LLVMContext>();
+  ThreadSafeModule TSM = ThreadSafeModule(std::move(M), std::move(C));
+  auto Error = J->addIRModule(std::move(TSM));
+  if (Error) {
+    std::string errorString;
+    llvm::raw_string_ostream stream(errorString);
+    stream << Error;
+    report_fatal_error(errorString.c_str());
+  }
+}
+
+extern "C" uint64_t LLVMRustLLJITLookup(LLJIT *J, const char *Name) {
+  auto Addr = J->lookup(Name);
+  if (!Addr)
+    report_fatal_error(toString(Addr.takeError()).c_str());
+
+  return Addr->getValue();
+}
+
+extern "C" void LLVMRustSetLinkageForAllFunctions(LLVMModuleRef M) {
+  auto Module = unwrap(M);
+  for (auto F = Module->getFunctionList().begin();
+       F != Module->getFunctionList().end(); F++) {
+    (*F).setLinkage(GlobalValue::LinkageTypes::LinkOnceODRLinkage);
+  }
+}
+
+extern "C" void LLVMRustAddGlobalCtor(LLVMContextRef C, LLVMModuleRef M,
+                                      LLVMValueRef Fn) {
+  auto AddrSpace = unwrap(M)->getDataLayout().getProgramAddressSpace();
+  auto CtorFnPtrTy =
+      PointerType::get(unwrap<FunctionType>(LLVMTypeOf(Fn)), AddrSpace);
+
+  auto VoidPtrTy = PointerType::get(Type::getVoidTy(*unwrap(C)), AddrSpace);
+
+  auto CtorTy =
+      StructType::get(Type::getInt32Ty(*unwrap(C)), CtorFnPtrTy, VoidPtrTy);
+
+  auto Ctor = ConstantStruct::get(
+      CtorTy, {
+                  ConstantInt::get(Type::getInt32Ty(*unwrap(C)), 65535),
+                  ConstantExpr::getBitCast(unwrap<Constant>(Fn), CtorFnPtrTy),
+                  ConstantPointerNull::get(VoidPtrTy),
+              });
+
+  auto CtorsTy = ArrayType::get(CtorTy, 1);
+  auto Ctors = ConstantArray::get(CtorsTy, {Ctor});
+
+  auto GlobalCtors = unwrap(M)->getOrInsertGlobal("llvm.global_ctors", CtorsTy);
+  unwrap(M)
+      ->getGlobalVariable("llvm.global_ctors")
+      ->setLinkage(GlobalValue::LinkageTypes::AppendingLinkage);
+  unwrap(M)->getGlobalVariable("llvm.global_ctors")->setInitializer(Ctors);
+}
+
+extern "C" void LLVMRustRunCtors(LLJIT *J) {
+  auto Error = J->initialize(J->getMainJITDylib());
+  if (Error) {
+    std::string errorString;
+    raw_string_ostream stream(errorString);
+    stream << Error;
+    report_fatal_error(errorString.c_str());
+  }
 }

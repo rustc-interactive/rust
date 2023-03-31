@@ -1535,16 +1535,13 @@ pub fn run_cargo(
                 // During check builds we need to keep crate metadata
                 keep = true;
             } else if rlib_only_metadata {
-                if filename.contains("jemalloc_sys") || filename.contains("rustc_smir") {
-                    // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
-                    // so we need to distribute them as rlib to be able to use them.
-                    keep |= filename.ends_with(".rlib");
-                } else {
-                    // Distribute the rest of the rustc crates as rmeta files only to reduce
-                    // the tarball sizes by about 50%. The object files are linked into
-                    // librustc_driver.so, so it is still possible to link against them.
-                    keep |= filename.ends_with(".rmeta");
-                }
+                // Don't distribute rustc crates as rmeta files because doing
+                // so will require rustc_driver to be imported, which causes
+                // a linking error.
+                //
+                // See <https://github.com/rust-lang/rust/issues/102065> for
+                // more info.
+                keep |= filename.ends_with(".rlib");
             } else {
                 // In all other cases keep all rlibs
                 keep |= filename.ends_with(".rlib");
